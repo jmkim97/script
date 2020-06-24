@@ -1,0 +1,56 @@
+#!/bin/bash
+
+wget https://archive.apache.org/dist/tomcat/tomcat-8/v8.5.53/bin/apache-tomcat-8.5.53.tar.gz 
+
+tar -xzf apache-tomcat-8.5.53.tar.gz
+
+yum -y install java-1.8.0-openjdk-devel.x86_64
+
+which javac > tmp.tmp
+
+var=$(cat tmp.tmp)
+
+ls -l $var | awk '{print $NF}' > tmp.tmp
+
+var=$(cat tmp.tmp)
+
+ls -l $var | awk '{print $NF}' > tmp.tmp
+
+sed -i 's/\/bin\/javac//g' tmp.tmp
+
+var=$(cat tmp.tmp)
+
+echo "JAVA_HOME=$var" >> /etc/profile
+echo "export JAVA_HOME" >> /etc/profile
+echo "PATH=\$JAVA_HOME/bin:\$PATH:\$HOME/.local/bin:\$HOME/bin" >> /etc/profile
+echo "export PATH" >> /etc/profile
+
+source /etc/profile
+
+
+
+cat<<EOF>/usr/lib/systemd/system/tomcat.service
+[Unit]
+Description=tomcat8
+After=network.target syslog.target
+
+[Service]
+Type=forking
+Environment=JAVA_HOME=$var
+User=root
+Group=root
+
+ExecStart=/usr/local/src/apache-tomcat-8.5.53/bin/startup.sh
+ExecStop=/usr/local/src/apache-tomcat-8.5.53/bin/shutdown.sh
+
+Umask=007
+RestartSec=10
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl start tomcat
+
+rm -f tmp.tmp

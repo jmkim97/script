@@ -1,0 +1,33 @@
+#!/bin/bash
+
+yum -y install pcre-devel openssl-devel zlib gcc gcc-c++
+
+wget http://nginx.org/download/nginx-1.16.1.tar.gz && tar -xzf nginx-1.16.1.tar.gz
+
+cd /usr/local/src/nginx-1.16.1 && ./configure --with-http_ssl_module --with-debug --prefix=/usr/local/nginx
+
+cd /usr/local/src/nginx-1.16.1 && make && make install
+
+cat<<EOF>/usr/lib/systemd/system/nginx.service
+[Unit]
+Description=The NGINX HTTP and reverse proxy server
+After=syslog.target network.target remote-fs.target nss-lookup.target
+
+[Service]
+Type=forking
+PIDFile=/run/nginx.pid
+ExecStartPre=/usr/local/nginx/sbin/nginx -t
+ExecStart=/usr/local/nginx/sbin/nginx
+ExecReload=/usr/local/nginx/sbin/nginx -s reload
+ExecStop=/bin/kill -s QUIT $MAINPID
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sed -i'' -r -e "/pid/a\pid        \/run\/nginx\.pid\;" /usr/local/nginx/conf/nginx.conf
+
+systemctl daemon-reload
+
+systemctl start nginx

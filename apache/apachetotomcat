@@ -1,0 +1,65 @@
+#!/bin/bash
+
+yum -y install perl
+
+sed -i 's/\#\!\/replace\/with\/path\/to\/perl\/interpreter \-w/\#\!\/usr\/bin\/perl \-w/g' /usr/local/apache/bin/apxs
+
+wget https://archive.apache.org/dist/tomcat/tomcat-connectors/jk/binaries/linux/jk-1.2.31/x86_64/mod_jk-1.2.31-httpd-2.2.x.so && mv mod_jk-1.2.31-httpd-2.2.x.so mod_jk.so && mv mod_jk.so /usr/local/apache/modules/mod_jk.so && chmod 755 mod_jk.so
+
+sed -i 's/\#Include conf\/extra\/httpd-vhosts.conf/Include conf\/extra\/httpd-vhosts.conf/g' /usr/local/apache/conf/httpd.conf
+
+echo "LoadModule jk_module modules/mod_jk.so" >> /usr/local/apache/conf/httpd.conf
+echo "Include conf/extra/mod_jk.conf" >> /usr/local/apache/conf/httpd.conf
+
+
+cat<<EOF>/usr/local/apache/conf/extra/mod_jk.conf
+<IfModule mod_jk.c>
+	JkWorkersFile conf/workers.properties
+	JkShmFile logs/mod_jk.shm
+	JkLogFile logs/mod_jk.log
+	JkLogLevel info
+	JkLogStampFormat "[%a %b %d %H:%M:%S %Y]"
+	JkMountFile conf/uriworkermap.properties
+</IfModule>
+EOF
+
+cat<<EOF>/usr/local/apache/conf/workers.properties
+worker.list=worker1
+worker.worker1.port=8009
+worker.worker1.host=localhost
+worker.worker1.type=ajp13
+EOF
+
+cat<<EOF>/usr/local/apache/conf/uriworkermap.properties
+/examples/*=worker1
+EOF
+
+cat<<EOF>/usr/local/apache/conf/extra/httpd-vhosts.conf
+NameVirtualHost *:80
+
+<VirtualHost *:80>
+	serverAdmin root
+	DocumentRoot "/usr/local/apache/htdocs"
+	ServerName localhost
+	JkMount /*.jsp worker1
+	JkMount /*.svg worker1
+	JkMount /*.css worker1
+	JkMount /*.do worker1
+	JkMount /*.png worker1
+	JkMount /*.gif worker1
+	
+</VirtualHost>
+EOF
+
+sed -i "116s/.*//" /usr/local/src/apache-tomcat-8.5.53/conf/server.xml
+
+sed -i "121s/.*//" /usr/local/src/apache-tomcat-8.5.53/conf/server.xml
+
+sed -i 's/address\=\"\:\:1\"/address\=\"0\.0\.0\.0\"/g' /usr/local/src/apache-tomcat-8.5.53/conf/server.xml
+
+sed -i'' -r -e "/port\=\"8009\"/a\               secretRequired\=\"false\"" /usr/local/src/apache-tomcat-8.5.53/conf/server.xml
+
+systemctl stop apache
+systemctl stop tomcat
+systemctl start tomcat
+systemctl start apache

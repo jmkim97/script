@@ -1,0 +1,201 @@
+#!/bin/bash
+
+create_mysql(){
+useradd mysql << EOF
+passwd mysql
+test123
+test123
+EOF
+}
+
+cat /etc/passwd | grep mysql > /dev/null0
+
+if [ $? -ne 0 ]
+
+then
+        create_mysql
+fi
+
+yum -y install wget gcc gcc-c++ pcre-devel openssl-devel expat-devel cmake ncurses ncurses-devel
+
+ls /usr/local/src | grep mysql-5.7.20 > /dev/null0
+
+if [ $? -eq 1 ]
+
+then
+
+wget https://downloads.mysql.com/archives/get/p/23/file/mysql-5.7.20.tar.gz && tar -xzf mysql-5.7.20.tar.gz
+
+fi
+
+ls /usr/local/src | grep boost_1_59_0 > /dev/null0
+
+if [ $? -eq 1 ]
+
+then
+
+wget http://sourceforge.net/projects/boost/files/boost/1.59.0/boost_1_59_0.tar.gz && tar -xzf boost_1_59_0.tar.gz
+
+fi
+
+sleep 5
+
+cd /usr/local/src/mysql-5.7.20 && cmake -DCMAKE_INSTALL_PREFIX=/usr/local/mysql -DMYSQL_DATADIR=/usr/local/mysql/mysql_data -DWITH_BOOST=../boost_1_59_0 -DWITH_INNOBASE_STORAGE_ENGINE=1 -DWITH_MYISAM_STORAGE_ENGINE=1 -DMYSQL_UNIX_ADDR=/tmp/mysql.sock -DSYSCONFDIR=/etc -DDEFAULT_CHARSET=utf8 -DDEFAULT_COLLATION=utf8_general_ci -DWITH_EXTRA_CHARSETS=all
+
+cd /usr/local/src/mysql-5.7.20 && make && make install
+
+cat<<EOF>/etc/my.cnf
+[client]
+port    = 3306
+socket  = /tmp/mysqld.sock
+default-character-set=utf8
+
+[mysqld_safe]
+socket  = /tmp/mysqld.sock
+
+[mysqld]
+# Character Set
+init_connect = SET collation_connection = utf8_general_ci
+init_connect = SET NAMES utf8
+character-set-server=utf8
+skip-character-set-client-handshake
+collation-server = utf8_general_ci
+
+# Basic Settings
+user      = mysql
+pid-file  = /tmp/mysqld.pid
+socket    = /tmp/mysqld.sock
+port      = 3306
+basedir   = /usr/local/mysql
+datadir   = /usr/local/mysql/mysql_data
+tmpdir    = /tmp
+
+skip-external-locking
+
+transaction_isolation = READ-COMMITTED
+
+# Engine
+default-storage-engine  = InnoDB
+
+# Listening IP
+bind-address            = 0.0.0.0
+
+# Safety
+max-connect-errors      = 1000000
+max_allowed_packet      = 64M
+skip-name-resolve
+sysdate-is-now          = 1
+innodb-strict-mode      = 1
+
+wait_timeout            = 60
+interactive_timeout     = 60
+
+# Buffers
+sort_buffer_size        = 4M
+read_buffer_size        = 2M
+join_buffer_size        = 8M
+read_rnd_buffer_size    = 16M
+
+# MyISAM
+key-buffer-size         = 32M
+myisam_sort_buffer_size = 64M
+
+# CACHES AND LIMITS #
+tmp-table-size          = 128M
+max-heap-table-size     = 128M
+query-cache-type        = 0
+query-cache-size        = 0
+query_cache_limit       = 1M
+max-connections         = 214
+thread-cache-size       = 50
+thread_stack            = 192K
+open-files-limit        = 1024
+table-definition-cache  = 1024
+table-open-cache        = 400
+
+# Bin logs
+binlog-format           = ROW
+log-bin                 = /usr/local/mysql/mysql_data/mysql-bin
+log-slave-updates       = 1
+expire-logs-days        = 5
+sync-binlog             = 1
+max_binlog_size         = 100M
+slow_query_log		= 1
+slow_query_log_file	= /usr/local/mysql/mysql_data/mysql-slow.log
+long_query_time		= 5
+
+server-id = 1 # randomize it incase of multiple servers
+
+# InnoDB
+innodb-buffer-pool-size         = 2048M
+innodb_buffer_pool_instances    = 8
+innodb_log_buffer_size          = 8M
+innodb-log-files-in-group       = 2
+innodb-log-file-size            = 256M
+innodb-file-per-table           = 1
+innodb-flush-log-at-trx-commit  = 1
+innodb-flush-method             = O_DIRECT
+
+# With virtual synchrony redundancy, make write queries faster
+innodb_doublewrite              = 1
+
+# LOGGING
+general_log_file                = /usr/local/mysql/mysql_data/mysql.log
+log-error                       = /usr/local/mysql/mysql_data/mysql-error.log
+log-queries-not-using-indexes   = 1
+
+[mysqldump]
+quick
+quote-names
+max_allowed_packet  = 16M
+	
+[isamchk]
+
+key_buffer    = 16M
+EOF
+
+cat<<EOF2>/usr/lib/systemd/system/mysqld.service
+[Unit]
+Description=MySQL Community Server
+After=network.target
+After=syslog.target
+
+[Install]
+WantedBy=multi-user.target
+Alias=mysql.service
+
+[Service]
+
+# Execute pre and post scripts as root
+PermissionsStartOnly=true
+
+# Needed to create system tables etc.
+#ExecStartPre=
+
+# Start main service
+ExecStart=/usr/local/mysql/bin/mysqld_safe
+
+# Don't signal startup success before a ping works
+#ExecStartPost=
+
+# Give up if ping don't get an answer
+TimeoutSec=300
+
+Restart=always
+PrivateTmp=false
+EOF2
+
+ln -s /usr/local/mysql/bin/mysql /usr/sbin/mysql
+
+/usr/local/mysql/bin/mysqld --initialize --user=mysql
+
+/usr/local/mysql/bin/mysql_ssl_rsa_setup
+
+systemctl daemon-reload
+
+systemctl start mysqld
+
+cat /usr/local/mysql/mysql_data/mysql-error.log | grep generated | awk '{print $NF}' > /usr/local/src/rootpassword.txt
+
+echo "Mysql installation is complete."
+echo "cat /usr/local/src/rootpassword.txt"

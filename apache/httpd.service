@@ -1,0 +1,18 @@
+[Unit]
+Description=apache
+After=network.target syslog.target
+
+[Service]
+Type=forking
+User=root
+Group=root
+
+ExecStart=/usr/local/apache/bin/apachectl start
+ExecStop=/usr/local/apache/bin/apachectl stop
+
+Umask=007
+RestartSec=10
+Restart=always
+
+[Install]
+WantedBy=multi-user.target 

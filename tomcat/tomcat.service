@@ -1,0 +1,20 @@
+[Unit]
+Description=tomcat8
+After=network.target syslog.target
+
+[Service]
+Type=forking
+Environment=JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.242.b08-0.el7_7.x86_64
+User=root
+Group=root
+
+ExecStart=/usr/local/src/apache-tomcat-8.5.53/bin/startup.sh
+ExecStop=/usr/local/src/apache-tomcat-8.5.53/bin/shutdown.sh
+
+Umask=007
+RestartSec=10
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+

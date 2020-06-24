@@ -1,0 +1,41 @@
+#!/bin/bash
+
+yum -y install wget gcc gcc-c++ pcre-devel openssl-devel expat-devel
+
+wget http://archive.apache.org/dist/httpd/httpd-2.2.17.tar.gz
+
+tar -xzf httpd-2.2.17.tar.gz
+
+sleep 5
+
+cd /usr/local/src/httpd-2.2.17/srclib && wget https://archive.apache.org/dist/apr/apr-1.5.2.tar.gz && tar -xzf apr-1.5.2.tar.gz && mv apr-1.5.2 apr && wget http://mirror.apache-kr.org//apr/apr-util-1.6.1.tar.gz && tar -xzf apr-util-1.6.1.tar.gz && mv apr-util-1.6.1 apr-util
+
+sleep 5
+
+cd /usr/local/src/httpd-2.2.17 && ./configure --prefix=/usr/local/apache --enable-so --enable-mods-shared=all --enable-modules-shared --with-included-apr && make && make install
+
+echo "ServerName localhost" >> /usr/local/apache/conf/httpd.conf
+
+cat<<EOF>/usr/lib/systemd/system/apache.service
+[Unit]
+Description=apache
+After=network.target syslog.target
+
+[Service]
+Type=forking
+User=root
+Group=root
+
+ExecStart=/usr/local/apache/bin/apachectl start
+ExecStop=/usr/local/apache/bin/apachectl stop
+
+Umask=007
+RestartSec=10
+Restart=always
+
+[Install]
+
+WantedBy=multi-user.target
+EOF
+
+systemctl start apache

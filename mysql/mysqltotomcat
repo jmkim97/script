@@ -1,0 +1,7 @@
+#!/bin/bash
+
+wget https://downloads.mysql.com/archives/get/p/3/file/mysql-connector-java-5.1.40.tar.gz && tar -xzf mysql-connector-java-5.1.40.tar.gz
+
+cp /usr/local/src/mysql-connector-java-5.1.40/mysql-connector-java-5.1.40-bin.jar /usr/local/src/apache-tomcat-8.5.53/lib/mysql-connector-java-5.1.40-bin.jar
+
+systemctl restart tomcat

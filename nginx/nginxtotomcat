@@ -1,0 +1,19 @@
+#!/bin/bash
+
+sed -i "44s/.*/        proxy_set_header        Host \$http_host\;/g" /usr/local/nginx/conf/nginx.conf
+sed -i "45s/.*/        proxy_set_header        X-Real-IP \$remote_addr\;/g" /usr/local/nginx/conf/nginx.conf
+sed -i'' -r -e "/X-Real-IP/a\        charset utf-8\;" /usr/local/nginx/conf/nginx.conf
+sed -i'' -r -e "/X-Real-IP/a\        proxy_redirect  off\;" /usr/local/nginx/conf/nginx.conf
+sed -i'' -r -e "/X-Real-IP/a\        proxy_pass http\:\/\/tomcat\;" /usr/local/nginx/conf/nginx.conf
+sed -i'' -r -e "/X-Real-IP/a\ " /usr/local/nginx/conf/nginx.conf
+sed -i'' -r -e "/X-Real-IP/a\        proxy_set_header        X-Forwarded-Proto \$scheme\;" /usr/local/nginx/conf/nginx.conf
+sed -i'' -r -e "/X-Real-IP/a\        proxy_set_header        X-Forwarded-For \$proxy_add_x_forwarded_for\;" /usr/local/nginx/conf/nginx.conf
+
+sed -i'' -r -e "/#gzip  on;/a\            server 192.168.10.111:8080;}" /usr/local/nginx/conf/nginx.conf
+sed -i'' -r -e "/#gzip  on;/a\            ip_hash;" /usr/local/nginx/conf/nginx.conf
+sed -i'' -r -e "/#gzip  on;/a\        upstream tomcat {" /usr/local/nginx/conf/nginx.conf
+
+
+systemctl restart nginx
+
+echo "You must change server ip in nginx.conf"
